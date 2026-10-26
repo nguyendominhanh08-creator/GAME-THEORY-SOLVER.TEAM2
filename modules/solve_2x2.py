@@ -7,7 +7,6 @@ Language: Python 3
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 def solve_game_2x2(A, plot_graph=True, save_fig_path=None):
