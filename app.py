@@ -61,7 +61,7 @@ default_df = pd.DataFrame(
 st.subheader("📝 Payoff Matrix Input A")
 edited_df = st.data_editor(
     default_df,
-    key=f"editor_vFINAL_{preset.replace(' ', '_')}_{rows}_{cols}",
+    key=f"editor_vFIX_COLUMNS_{preset.replace(' ', '_')}_{rows}_{cols}",
     num_rows="fixed",
     use_container_width=True
 )
@@ -73,6 +73,30 @@ if solve_btn:
     st.markdown("---")
     st.header("🎯 Equilibrium Results")
     
+    # Hàm hỗ trợ vẽ biểu đồ Plotly hiển thị 100% đầy đủ cột kể cả xác suất bằng 0
+    def plot_strategy_distribution(probs, player_name, color_scale, prefix):
+        n_strat = len(probs)
+        df = pd.DataFrame({
+            "Strategy": [f"{prefix}{i+1}" for i in range(n_strat)],
+            "Probability": probs,
+            "Label": [f"{val:.4f}" for val in probs]
+        })
+        fig = px.bar(
+            df, x="Strategy", y="Probability", text="Label",
+            title=f"{player_name} Strategy Distribution ({n_strat} Strategies)",
+            color="Probability", color_continuous_scale=color_scale
+        )
+        # Bắt buộc ép x-axis dạng category để không ẩn cột xác suất = 0
+        fig.update_xaxes(type='category')
+        fig.update_traces(textposition='outside')
+        fig.update_layout(
+            font_family="Times New Roman",
+            title_font_size=16,
+            yaxis_range=[0, 1.25],
+            showlegend=False
+        )
+        return fig
+
     # 1. KỊCH BẢN 1: SADDLE POINT (MARKETING COMPETITION)
     if "Marketing" in preset:
         st.success("✅ Pure Strategy Equilibrium (Saddle Point) Identified!")
@@ -81,8 +105,10 @@ if solve_btn:
         m2.metric("Player 1 Choice", "Row 1 (X1)")
         m3.metric("Player 2 Choice", "Col 2 (Y2)")
         st.info("📍 **Equilibrium Location:** Cell (1, 2) | Payoff = 1.0000")
-        st.write("- **Player 1 Strategy Vector (x*):** `[1.0000, 0.0000]`")
-        st.write("- **Player 2 Strategy Vector (y*):** `[0.0000, 1.0000]`")
+        
+        col1, col2 = st.columns(2)
+        col1.plotly_chart(plot_strategy_distribution([1.0, 0.0], "Player 1", "Blues", "X"), use_container_width=True)
+        col2.plotly_chart(plot_strategy_distribution([0.0, 1.0], "Player 2", "Tealgrn", "Y"), use_container_width=True)
         st.stop()
 
     # 2. KỊCH BẢN 2: 2x2 MIXED STRATEGY (CONTRACT BIDDING)
@@ -91,17 +117,8 @@ if solve_btn:
         st.metric("Expected Game Value (v)", "2.5000")
         
         col1, col2 = st.columns(2)
-        df_x = pd.DataFrame({"Strategy": ["X1", "X2"], "Probability": [0.5000, 0.5000]})
-        fig_x = px.bar(df_x, x="Strategy", y="Probability", text_auto=".4f", title="Player 1 Strategy Distribution (2 Strategies)", color="Probability", color_continuous_scale="Blues")
-        fig_x.update_xaxes(type='category')
-        fig_x.update_layout(yaxis_range=[0, 1.1])
-        col1.plotly_chart(fig_x, use_container_width=True)
-
-        df_y = pd.DataFrame({"Strategy": ["Y1", "Y2"], "Probability": [0.7500, 0.2500]})
-        fig_y = px.bar(df_y, x="Strategy", y="Probability", text_auto=".4f", title="Player 2 Strategy Distribution (2 Strategies)", color="Probability", color_continuous_scale="Tealgrn")
-        fig_y.update_xaxes(type='category')
-        fig_y.update_layout(yaxis_range=[0, 1.1])
-        col2.plotly_chart(fig_y, use_container_width=True)
+        col1.plotly_chart(plot_strategy_distribution([0.5, 0.5], "Player 1", "Blues", "X"), use_container_width=True)
+        col2.plotly_chart(plot_strategy_distribution([0.75, 0.25], "Player 2", "Tealgrn", "Y"), use_container_width=True)
         st.stop()
 
     # 3. KỊCH BẢN 3: 3x3 GENERAL LP (FACILITY SECURITY)
@@ -110,17 +127,8 @@ if solve_btn:
         st.metric("Expected Game Value (v)", "0.0000")
         
         col1, col2 = st.columns(2)
-        df_x = pd.DataFrame({"Strategy": ["X1", "X2", "X3"], "Probability": [0.3333, 0.3333, 0.3333]})
-        fig_x = px.bar(df_x, x="Strategy", y="Probability", text_auto=".4f", title="Player 1 Strategy Distribution (3 Strategies)", color="Probability", color_continuous_scale="Blues")
-        fig_x.update_xaxes(type='category')
-        fig_x.update_layout(yaxis_range=[0, 1.1])
-        col1.plotly_chart(fig_x, use_container_width=True)
-
-        df_y = pd.DataFrame({"Strategy": ["Y1", "Y2", "Y3"], "Probability": [0.3333, 0.3333, 0.3333]})
-        fig_y = px.bar(df_y, x="Strategy", y="Probability", text_auto=".4f", title="Player 2 Strategy Distribution (3 Strategies)", color="Probability", color_continuous_scale="Tealgrn")
-        fig_y.update_xaxes(type='category')
-        fig_y.update_layout(yaxis_range=[0, 1.1])
-        col2.plotly_chart(fig_y, use_container_width=True)
+        col1.plotly_chart(plot_strategy_distribution([0.3333, 0.3333, 0.3333], "Player 1", "Blues", "X"), use_container_width=True)
+        col2.plotly_chart(plot_strategy_distribution([0.3333, 0.3333, 0.3333], "Player 2", "Tealgrn", "Y"), use_container_width=True)
         st.stop()
 
     # 4. TRƯỜNG HỢP NHẬP TỰ DO (CUSTOM INPUT)
@@ -139,6 +147,13 @@ if solve_btn:
             st.success("✅ Pure Strategy Equilibrium (Saddle Point) Identified!")
             st.metric("Optimal Game Value (v)", f"{A[r_idx, c_idx]:.4f}")
             st.info(f"📍 Location: Cell ({r_idx+1}, {c_idx+1})")
+            
+            x_p = [1.0 if i == r_idx else 0.0 for i in range(m_real)]
+            y_p = [1.0 if j == c_idx else 0.0 for j in range(n_real)]
+            
+            col1, col2 = st.columns(2)
+            col1.plotly_chart(plot_strategy_distribution(x_p, "Player 1", "Blues", "X"), use_container_width=True)
+            col2.plotly_chart(plot_strategy_distribution(y_p, "Player 2", "Tealgrn", "Y"), use_container_width=True)
         else:
             from scipy.optimize import linprog
             shift = abs(np.min(A)) + 1.0 if np.min(A) <= 0 else 0.0
@@ -151,13 +166,7 @@ if solve_btn:
             
             st.warning("⚠️ No Pure Saddle Point found. Optimal Mixed Equilibrium calculated via Linear Programming Engine.")
             st.metric("Expected Game Value (v)", f"{v_val:.4f}")
+            
             col1, col2 = st.columns(2)
-            df_x = pd.DataFrame({"Strategy": [f"X{i+1}" for i in range(m_real)], "Probability": x_v})
-            fig_x = px.bar(df_x, x="Strategy", y="Probability", text_auto=".4f", title="Player 1 Strategy Distribution")
-            fig_x.update_xaxes(type='category')
-            col1.plotly_chart(fig_x, use_container_width=True)
-
-            df_y = pd.DataFrame({"Strategy": [f"Y{j+1}" for j in range(n_real)], "Probability": y_v})
-            fig_y = px.bar(df_y, x="Strategy", y="Probability", text_auto=".4f", title="Player 2 Strategy Distribution")
-            fig_y.update_xaxes(type='category')
-            col2.plotly_chart(fig_y, use_container_width=True)
+            col1.plotly_chart(plot_strategy_distribution(x_v, "Player 1", "Blues", "X"), use_container_width=True)
+            col2.plotly_chart(plot_strategy_distribution(y_v, "Player 2", "Tealgrn", "Y"), use_container_width=True)
