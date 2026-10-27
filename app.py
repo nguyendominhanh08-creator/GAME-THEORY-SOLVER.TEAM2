@@ -127,7 +127,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🎓 Academic Information")
     st.caption("**Course:** Linear Algebra")
-    st.caption("**Version:** 3.1 Fixed Edition")
+    st.caption("**Version:** 3.2 Bulletproof Edition")
 
 # ---------------------------------------------------------
 # 4. Input Matrix Handling
@@ -200,9 +200,8 @@ if solve_btn:
     except Exception:
         saddle_pts = []
 
-    has_sp = len(saddle_pts) > 0
-
-    if has_sp:
+    # Strict length check before indexing
+    if len(saddle_pts) > 0:
         r_idx, c_idx = saddle_pts[0]
         game_val = A[r_idx, c_idx]
         
