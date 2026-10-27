@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom Styling (Times New Roman Font + Animations)
+# Times New Roman Font + Animations
 st.markdown("""
 <style>
     html, body, [class*="css"], .stMarkdown, p, div, h1, h2, h3, button, input {
@@ -122,7 +122,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🎓 Academic Information")
     st.caption("**Course:** Linear Algebra")
-    st.caption("**Version:** 3.3 Final Stable Edition")
+    st.caption("**Version:** 4.0 Fully Robust Edition")
 
 # ---------------------------------------------------------
 # 4. Input Matrix Handling
@@ -184,7 +184,7 @@ if solve_btn:
     
     tab1, tab2, tab3 = st.tabs(["📊 Interactive Dashboard", "💡 Strategic Decision Analysis", "📐 Mathematical Formulation"])
     
-    # SAFE SADDLE POINT CHECK LOGIC
+    # 1. Check Saddle Point Safely
     has_sp = False
     saddle_pts = []
     
@@ -202,7 +202,6 @@ if solve_btn:
 
     if has_sp and len(saddle_pts) > 0:
         sp_item = saddle_pts[0]
-        # Xử lý an toàn nếu sp_item là dict hoặc tuple
         if isinstance(sp_item, (tuple, list)):
             r_idx, c_idx = int(sp_item[0]), int(sp_item[1])
         elif isinstance(sp_item, dict):
@@ -224,16 +223,16 @@ if solve_btn:
             st.markdown(f"### 🎯 Optimal Pure Decision")
             st.write(f"- **Player 1** must play **Strategy X{r_idx+1}** with 100% probability.")
             st.write(f"- **Player 2** must play **Strategy Y{c_idx+1}** with 100% probability.")
-            st.write(f"- Neither player can unilaterally deviate to improve their expected payoff.")
 
         with tab3:
             st.latex(r"\max_i \min_j a_{ij} = \min_j \max_i a_{ij} = v")
             st.write(f"The Maximin value equals Minimax value at **{game_val:.4f}**.")
 
     else:
-        # Mixed Strategy Solutions
+        # 2. Mixed Strategy Solutions
         x_opt, y_opt, game_val, solver_name = None, None, None, ""
         
+        # Try 2x2 Analytical Solver if matrix is 2x2
         if rows == 2 and cols == 2:
             try:
                 res_2x2 = solve_game_2x2(A)
@@ -247,26 +246,38 @@ if solve_btn:
             except Exception:
                 pass
                 
+        # Fallback to LP Solver (scipy linprog HiGHS)
         if x_opt is None:
-            sol = solve_matrix_game(A)
-            if hasattr(sol, 'x'):
-                x_opt, y_opt, game_val = sol.x, sol.y, sol.value
-            elif isinstance(sol, dict):
-                x_opt = sol.get("x")
-                y_opt = sol.get("y")
-                game_val = sol.get("value")
-            solver_name = "General m × n Linear Programming Engine (HiGHS)"
+            try:
+                sol = solve_matrix_game(A)
+                if hasattr(sol, 'x'):
+                    x_opt, y_opt, game_val = sol.x, sol.y, sol.value
+                elif isinstance(sol, dict):
+                    x_opt = sol.get("x")
+                    y_opt = sol.get("y")
+                    game_val = sol.get("value")
+                else:
+                    x_opt, y_opt, game_val = sol[0], sol[1], sol[2]
+                solver_name = "General m × n Linear Programming Engine (HiGHS)"
+            except Exception as e:
+                st.error(f"❌ LP Solver Error: {e}")
+                st.stop()
+
+        # Ensure float types
+        game_val = float(np.squeeze(game_val))
+        x_opt = np.asarray(x_opt, dtype=float).flatten()
+        y_opt = np.asarray(y_opt, dtype=float).flatten()
 
         with tab1:
             st.warning(f"⚠️ No Pure Saddle Point found. Optimal Mixed Equilibrium calculated via **{solver_name}**.")
-            st.metric("Expected Game Value (v)", f"{float(game_val):.4f}")
+            st.metric("Expected Game Value (v)", f"{game_val:.4f}")
             
             st.markdown("### 📈 Interactive Strategy Probability Distributions")
             chart_col1, chart_col2 = st.columns(2)
             
             # Plotly Chart Player 1
             df_x = pd.DataFrame({
-                "Strategy": [f"X{i+1}" for i in range(rows)],
+                "Strategy": [f"X{i+1}" for i in range(len(x_opt))],
                 "Probability": x_opt
             })
             fig_x = px.bar(
@@ -284,7 +295,7 @@ if solve_btn:
 
             # Plotly Chart Player 2
             df_y = pd.DataFrame({
-                "Strategy": [f"Y{j+1}" for j in range(cols)],
+                "Strategy": [f"Y{j+1}" for j in range(len(y_opt))],
                 "Probability": y_opt
             })
             fig_y = px.bar(
@@ -304,7 +315,7 @@ if solve_btn:
             st.markdown("### 💡 Strategic Takeaways")
             st.write(f"- **Player 1 Strategy Vector ($x^*$):** `{np.round(x_opt, 4)}`")
             st.write(f"- **Player 2 Strategy Vector ($y^*$):** `{np.round(y_opt, 4)}`")
-            st.write(f"- Expected game payoff under optimal mixed strategy equilibrium is **{float(game_val):.4f}**.")
+            st.write(f"- Expected game payoff under optimal mixed strategy equilibrium is **{game_val:.4f}**.")
 
         with tab3:
             st.markdown("### 📐 Linear Programming Model Formulation")
