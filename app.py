@@ -8,6 +8,9 @@ from modules.saddle_point import find_saddle_points
 from modules.solve_2x2 import solve_game_2x2
 from modules.lp_solver import solve_matrix_game
 
+# Xóa triệt để cache cũ để Streamlit luôn cập nhật code mới nhất
+st.cache_data.clear()
+
 # ---------------------------------------------------------
 # 1. Page Configuration & Custom Academic CSS
 # ---------------------------------------------------------
@@ -126,7 +129,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🎓 Academic Information")
     st.caption("**Course:** Linear Algebra")
-    st.caption("**Version:** 5.3 Fixed Saddle Flow & Stop")
+    st.caption("**Version:** 5.4 Auto-Clear Cache Edition")
 
 # ---------------------------------------------------------
 # 4. Input Matrix Handling
@@ -156,7 +159,7 @@ with col_left:
     st.caption("Double-click cells below to edit numerical values:")
     edited_df = st.data_editor(
         default_df,
-        key=f"editor_{preset}_{rows}_{cols}",
+        key=f"editor_{preset}_{rows}_{cols}_v54",
         num_rows="fixed",
         use_container_width=True
     )
@@ -190,7 +193,7 @@ if solve_btn:
     
     tab1, tab2, tab3 = st.tabs(["📊 Interactive Dashboard", "💡 Strategic Decision Analysis", "📐 Mathematical Formulation"])
     
-    # 1. Trực tiếp tính Saddle Point bằng Maximin - Minimax (Chính xác 100% tuyệt đối)
+    # 1. Trực tiếp tính Saddle Point bằng Maximin - Minimax
     row_mins = np.min(A, axis=1)
     col_maxs = np.max(A, axis=0)
     maximin = np.max(row_mins)
@@ -199,7 +202,6 @@ if solve_btn:
     has_sp = np.isclose(maximin, minimax)
     
     if has_sp:
-        # Tìm tất cả các ô thỏa mãn điểm yên ngựa
         saddle_pts = [(int(i), int(j)) for i in range(m_real) for j in range(n_real) 
                       if np.isclose(A[i, j], maximin) and np.isclose(row_mins[i], maximin) and np.isclose(col_maxs[j], minimax)]
         
@@ -223,10 +225,10 @@ if solve_btn:
             st.latex(r"\max_i \min_j a_{ij} = \min_j \max_i a_{ij} = v")
             st.write(f"The Maximin value equals Minimax value at **{game_val:.4f}**.")
 
-        # DỪNG CHƯƠNG TRÌNH TẠI ĐÂY - Không cho phép chạy xuống dòng cảnh báo "No Pure Saddle Point"!
+        # Khóa luồng ngay lập tức
         st.stop()
 
-    # 2. Nếu KHÔNG CÓ Điểm yên ngựa mới chạy xuống đây (Mixed Strategy Solutions)
+    # 2. Mixed Strategy Solutions
     x_opt, y_opt, game_val, solver_name = None, None, None, ""
     
     if m_real == 2 and n_real == 2:
@@ -269,7 +271,6 @@ if solve_btn:
         st.markdown("### 📈 Interactive Strategy Probability Distributions")
         chart_col1, chart_col2 = st.columns(2)
         
-        # Plotly Chart Player 1
         df_x = pd.DataFrame({
             "Strategy": [f"X{i+1}" for i in range(m_real)],
             "Probability": x_opt,
@@ -290,7 +291,6 @@ if solve_btn:
         )
         chart_col1.plotly_chart(fig_x, use_container_width=True)
 
-        # Plotly Chart Player 2
         df_y = pd.DataFrame({
             "Strategy": [f"Y{j+1}" for j in range(n_real)],
             "Probability": y_opt,
