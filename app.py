@@ -31,7 +31,6 @@ st.markdown("""
         text-align: center;
         margin-bottom: 5px;
         letter-spacing: 0.5px;
-        animation: fadeInDown 1s ease-in-out;
     }
     .sub-title {
         font-size: 1.2rem;
@@ -39,7 +38,6 @@ st.markdown("""
         text-align: center;
         margin-bottom: 25px;
         font-style: italic;
-        animation: fadeInUp 1.2s ease-in-out;
     }
 
     .metric-card {
@@ -49,11 +47,6 @@ st.markdown("""
         padding: 18px;
         margin-bottom: 15px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    .metric-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.15);
     }
     .metric-title {
         font-size: 1rem;
@@ -72,32 +65,16 @@ st.markdown("""
         font-size: 1.2rem !important;
         font-weight: bold !important;
         border-radius: 8px !important;
-        transition: all 0.3s ease-in-out !important;
-    }
-    div.stButton > button:hover {
-        transform: scale(1.02);
-        box-shadow: 0 0 15px rgba(37, 99, 235, 0.5);
-    }
-
-    @keyframes fadeInDown {
-        0% { opacity: 0; transform: translateY(-20px); }
-        100% { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes fadeInUp {
-        0% { opacity: 0; transform: translateY(20px); }
-        100% { opacity: 1; transform: translateY(0); }
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# 2. Hero Header
-# ---------------------------------------------------------
+# Header
 st.markdown('<div class="main-title">⚖️ EQUIMATRIX OPTIMIZATION SOLVER</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Two-Player Zero-Sum Game Theory Engine • Linear Algebra Group Project</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3. Sidebar Setup
+# 2. Sidebar Setup
 # ---------------------------------------------------------
 with st.sidebar:
     st.title("⚙️ Control Panel")
@@ -124,12 +101,10 @@ with st.sidebar:
     cols = st.number_input("Cols $n$ (Player 2 Strategies):", min_value=2, max_value=6, value=default_cols, step=1)
     
     st.markdown("---")
-    st.markdown("### 🎓 Academic Information")
-    st.caption("**Course:** Linear Algebra")
-    st.caption("**Version:** 7.0 Anti-Cache Session Edition")
+    st.caption("**Course:** Linear Algebra | Version 8.0 Ultimate Clean Engine")
 
 # ---------------------------------------------------------
-# 4. Input Matrix Handling
+# 3. Input Matrix Handling
 # ---------------------------------------------------------
 if "Marketing" in preset:
     rows, cols = 2, 2
@@ -155,12 +130,11 @@ with col_left:
     st.subheader("📝 Payoff Matrix Input $A$")
     st.caption("Double-click cells below to edit numerical values:")
     
-    # Tạo key động cực kỳ thông minh để diệt sạch Session State cũ khi đổi Preset
-    editor_key = f"editor_v7_{preset.replace(' ', '_')}_{rows}_{cols}"
-    
+    # Key động hoàn toàn ngắt kết nối Session State cũ
+    unique_key = f"matrix_grid_{hash(preset)}_{rows}_{cols}"
     edited_df = st.data_editor(
         default_df,
-        key=editor_key,
+        key=unique_key,
         num_rows="fixed",
         use_container_width=True
     )
@@ -181,12 +155,12 @@ with col_right:
 solve_btn = st.button("🚀 Calculate Equilibrium Solution", type="primary", use_container_width=True)
 
 # ---------------------------------------------------------
-# 5. Solver & Animated Interactive Results Dashboard
+# 4. Calculation Pipeline
 # ---------------------------------------------------------
 if solve_btn:
     st.balloons()
     
-    # Bắt buộc ép ma trận theo đúng Preset nếu người dùng không chọn Custom Input
+    # Ép cứng ma trận đầu vào theo đúng Preset lựa chọn
     if "Marketing" in preset:
         A = np.array([[3.0, 1.0], [0.0, 4.0]], dtype=float)
     elif "Contract" in preset:
@@ -203,15 +177,13 @@ if solve_btn:
     
     tab1, tab2, tab3 = st.tabs(["📊 Interactive Dashboard", "💡 Strategic Decision Analysis", "📐 Mathematical Formulation"])
     
-    # 1. Thuật toán kiểm tra Điểm Yên Ngựa (Maximin = Minimax)
+    # BƯỚC 1: Kiểm tra Điểm Yên Ngựa bằng Maximin - Minimax trực tiếp
     row_mins = np.min(A, axis=1)
     col_maxs = np.max(A, axis=0)
-    maximin = np.max(row_mins)
-    minimax = np.min(col_maxs)
+    maximin = float(np.max(row_mins))
+    minimax = float(np.min(col_maxs))
     
-    has_sp = np.isclose(maximin, minimax)
-    
-    if has_sp:
+    if np.isclose(maximin, minimax):
         saddle_pts = [(int(i), int(j)) for i in range(m_real) for j in range(n_real) 
                       if np.isclose(A[i, j], maximin) and np.isclose(row_mins[i], maximin) and np.isclose(col_maxs[j], minimax)]
         
@@ -227,7 +199,7 @@ if solve_btn:
             st.info(f"📍 **Equilibrium Point Location:** Cell ({r_idx + 1}, {c_idx + 1})")
 
         with tab2:
-            st.markdown(f"### 🎯 Optimal Pure Decision")
+            st.markdown("### 🎯 Optimal Pure Decision")
             st.write(f"- **Player 1** must play **Strategy X{r_idx+1}** with 100% probability.")
             st.write(f"- **Player 2** must play **Strategy Y{c_idx+1}** with 100% probability.")
 
@@ -235,10 +207,10 @@ if solve_btn:
             st.latex(r"\max_i \min_j a_{ij} = \min_j \max_i a_{ij} = v")
             st.write(f"The Maximin value equals Minimax value at **{game_val:.4f}**.")
 
-        # Ngắt luồng xử lý lập tức
+        # NGẮT LUỒNG NGAY LẬP TỨC
         st.stop()
 
-    # 2. Xử lý Chiến lược hỗn hợp (Mixed Strategy)
+    # BƯỚC 2: Chiến lược Hỗn hợp (Mixed Strategy)
     x_opt, y_opt, game_val, solver_name = None, None, None, ""
     
     if m_real == 2 and n_real == 2:
