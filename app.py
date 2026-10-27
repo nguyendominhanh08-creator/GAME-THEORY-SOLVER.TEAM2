@@ -8,9 +8,6 @@ from modules.saddle_point import find_saddle_points
 from modules.solve_2x2 import solve_game_2x2
 from modules.lp_solver import solve_matrix_game
 
-# Xóa triệt để cache cũ để Streamlit luôn cập nhật code mới nhất
-st.cache_data.clear()
-
 # ---------------------------------------------------------
 # 1. Page Configuration & Custom Academic CSS
 # ---------------------------------------------------------
@@ -129,7 +126,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🎓 Academic Information")
     st.caption("**Course:** Linear Algebra")
-    st.caption("**Version:** 5.4 Auto-Clear Cache Edition")
+    st.caption("**Version:** 6.0 Robust Preset & Saddle Execution")
 
 # ---------------------------------------------------------
 # 4. Input Matrix Handling
@@ -159,7 +156,7 @@ with col_left:
     st.caption("Double-click cells below to edit numerical values:")
     edited_df = st.data_editor(
         default_df,
-        key=f"editor_{preset}_{rows}_{cols}_v54",
+        key=f"editor_v6_{preset}_{rows}_{cols}",
         num_rows="fixed",
         use_container_width=True
     )
@@ -185,7 +182,16 @@ solve_btn = st.button("🚀 Calculate Equilibrium Solution", type="primary", use
 if solve_btn:
     st.balloons()
     
-    A = edited_df.to_numpy(dtype=float)
+    # Ưu tiên lấy ma trận gốc từ Preset nếu người dùng đang chọn Scenario
+    if "Marketing" in preset:
+        A = np.array([[3.0, 1.0], [0.0, 4.0]])
+    elif "Contract" in preset:
+        A = np.array([[2.0, 4.0], [3.0, 1.0]])
+    elif "Facility" in preset:
+        A = np.array([[0.0, -1.0, 1.0], [1.0, 0.0, -1.0], [-1.0, 1.0, 0.0]])
+    else:
+        A = edited_df.to_numpy(dtype=float)
+        
     m_real, n_real = A.shape
     
     st.markdown("---")
@@ -193,7 +199,7 @@ if solve_btn:
     
     tab1, tab2, tab3 = st.tabs(["📊 Interactive Dashboard", "💡 Strategic Decision Analysis", "📐 Mathematical Formulation"])
     
-    # 1. Trực tiếp tính Saddle Point bằng Maximin - Minimax
+    # 1. Thuật toán kiểm tra Điểm Yên Ngựa (Maximin = Minimax)
     row_mins = np.min(A, axis=1)
     col_maxs = np.max(A, axis=0)
     maximin = np.max(row_mins)
@@ -225,10 +231,10 @@ if solve_btn:
             st.latex(r"\max_i \min_j a_{ij} = \min_j \max_i a_{ij} = v")
             st.write(f"The Maximin value equals Minimax value at **{game_val:.4f}**.")
 
-        # Khóa luồng ngay lập tức
+        # Dừng luồng xử lý tại đây để không chạy xuống phần Mixed Strategy
         st.stop()
 
-    # 2. Mixed Strategy Solutions
+    # 2. Xử lý Chiến lược hỗn hợp (Mixed Strategy) khi KHÔNG có điểm yên ngựa
     x_opt, y_opt, game_val, solver_name = None, None, None, ""
     
     if m_real == 2 and n_real == 2:
