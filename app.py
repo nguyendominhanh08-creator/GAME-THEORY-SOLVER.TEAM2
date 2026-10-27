@@ -84,28 +84,60 @@ if solve_btn:
     st.markdown("---")
     st.header("🎯 Equilibrium Results")
     
-    def plot_strategy_distribution(probs, player_name, color_scale, prefix):
-        n_strat = len(probs)
-        df = pd.DataFrame({
-            "Strategy": [f"{prefix}{i+1}" for i in range(n_strat)],
-            "Probability": probs,
-            "Label": [f"{val:.4f}" for val in probs]
-        })
-        fig = px.bar(
-            df, x="Strategy", y="Probability", text="Label",
-            title=f"{player_name} Strategy Distribution ({n_strat} Strategies)",
-            color="Probability", color_continuous_scale=color_scale
-        )
-        fig.update_xaxes(type='category')
-        fig.update_traces(textposition='outside')
-        fig.update_layout(
-            font_family="Times New Roman",
-            title_font_size=16,
-            yaxis_range=[0, 1.25],
-            showlegend=False
-        )
-        return fig
+  def plot_strategy_distribution(
+    probs, player_name, color_scale, labels
+):
+    probs = np.asarray(probs, dtype=float)
+    labels = list(labels)
 
+    if len(probs) != len(labels):
+        raise ValueError(
+            f"{player_name}: the number of probabilities "
+            f"({len(probs)}) does not match the number of "
+            f"strategies ({len(labels)})."
+        )
+
+    df = pd.DataFrame({
+        "Strategy": labels,
+        "Probability": probs,
+        "Label": [f"{value:.4f}" for value in probs],
+    })
+
+    fig = px.bar(
+        df,
+        x="Strategy",
+        y="Probability",
+        text="Label",
+        title=f"{player_name} Strategy Distribution",
+        color="Probability",
+        color_continuous_scale=color_scale,
+        category_orders={"Strategy": labels},
+    )
+
+    fig.update_traces(
+        textposition="outside",
+        cliponaxis=False,
+    )
+
+    fig.update_layout(
+        font_family="Times New Roman",
+        title_font_size=16,
+        showlegend=False,
+        yaxis=dict(
+            range=[0, 1.2],
+            title="Probability",
+            tickformat=".2f",
+        ),
+        xaxis=dict(
+            type="category",
+            categoryorder="array",
+            categoryarray=labels,
+        ),
+        coloraxis_showscale=False,
+        margin=dict(t=65, b=50),
+    )
+
+    return fig
     # Presets Logic
     if "Marketing" in preset:
         st.success("✅ Pure Strategy Equilibrium (Saddle Point) Identified!")
