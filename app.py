@@ -18,7 +18,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Times New Roman Font + Animations
 st.markdown("""
 <style>
     html, body, [class*="css"], .stMarkdown, p, div, h1, h2, h3, button, input {
@@ -103,11 +102,6 @@ st.markdown('<div class="sub-title">Two-Player Zero-Sum Game Theory Engine • L
 with st.sidebar:
     st.title("⚙️ Control Panel")
     
-    st.markdown("### 📐 Matrix Dimensions")
-    rows = st.number_input("Rows $m$ (Player 1 Strategies):", min_value=2, max_value=6, value=2, step=1)
-    cols = st.number_input("Cols $n$ (Player 2 Strategies):", min_value=2, max_value=6, value=2, step=1)
-    
-    st.markdown("---")
     st.markdown("### 📌 Real-World Presets")
     preset = st.selectbox(
         "Choose Test Scenario:",
@@ -118,11 +112,21 @@ with st.sidebar:
             "Scenario 3: Facility Security (3x3 General LP)"
         ]
     )
+    st.markdown("---")
+    
+    st.markdown("### 📐 Matrix Dimensions")
+    default_rows = 2
+    default_cols = 2
+    if "Facility" in preset:
+        default_rows, default_cols = 3, 3
+
+    rows = st.number_input("Rows $m$ (Player 1 Strategies):", min_value=2, max_value=6, value=default_rows, step=1)
+    cols = st.number_input("Cols $n$ (Player 2 Strategies):", min_value=2, max_value=6, value=default_cols, step=1)
     
     st.markdown("---")
     st.markdown("### 🎓 Academic Information")
     st.caption("**Course:** Linear Algebra")
-    st.caption("**Version:** 4.0 Fully Robust Edition")
+    st.caption("**Version:** 5.0 Universal m × n Engine")
 
 # ---------------------------------------------------------
 # 4. Input Matrix Handling
@@ -179,12 +183,14 @@ if solve_btn:
     st.balloons()
     
     A = edited_df.to_numpy(dtype=float)
+    m_real, n_real = A.shape # Kích thước chuẩn thực tế
+    
     st.markdown("---")
     st.header("🎯 Equilibrium Results & Decision Analytics")
     
     tab1, tab2, tab3 = st.tabs(["📊 Interactive Dashboard", "💡 Strategic Decision Analysis", "📐 Mathematical Formulation"])
     
-    # 1. Check Saddle Point Safely
+    # 1. Safe Saddle Point Check
     has_sp = False
     saddle_pts = []
     
@@ -232,8 +238,8 @@ if solve_btn:
         # 2. Mixed Strategy Solutions
         x_opt, y_opt, game_val, solver_name = None, None, None, ""
         
-        # Try 2x2 Analytical Solver if matrix is 2x2
-        if rows == 2 and cols == 2:
+        # Chỉ gọi 2x2 Analytical Solver khi ma trận ĐÚNG LÀ 2x2 thực sự
+        if m_real == 2 and n_real == 2:
             try:
                 res_2x2 = solve_game_2x2(A)
                 if isinstance(res_2x2, tuple):
@@ -246,7 +252,7 @@ if solve_btn:
             except Exception:
                 pass
                 
-        # Fallback to LP Solver (scipy linprog HiGHS)
+        # Với tất cả ma trận khác (2x3, 3x2, 3x3, 4x4, 6x6...), dùng LP Solver
         if x_opt is None:
             try:
                 sol = solve_matrix_game(A)
@@ -258,15 +264,15 @@ if solve_btn:
                     game_val = sol.get("value")
                 else:
                     x_opt, y_opt, game_val = sol[0], sol[1], sol[2]
-                solver_name = "General m × n Linear Programming Engine (HiGHS)"
+                solver_name = f"General {m_real} × {n_real} Linear Programming Engine (HiGHS)"
             except Exception as e:
                 st.error(f"❌ LP Solver Error: {e}")
                 st.stop()
 
-        # Ensure float types
+        # Đảm bảo ép chuẩn xác độ dài m_real (Player 1) và n_real (Player 2)
+        x_opt = np.asarray(x_opt, dtype=float).flatten()[:m_real]
+        y_opt = np.asarray(y_opt, dtype=float).flatten()[:n_real]
         game_val = float(np.squeeze(game_val))
-        x_opt = np.asarray(x_opt, dtype=float).flatten()
-        y_opt = np.asarray(y_opt, dtype=float).flatten()
 
         with tab1:
             st.warning(f"⚠️ No Pure Saddle Point found. Optimal Mixed Equilibrium calculated via **{solver_name}**.")
@@ -275,14 +281,14 @@ if solve_btn:
             st.markdown("### 📈 Interactive Strategy Probability Distributions")
             chart_col1, chart_col2 = st.columns(2)
             
-            # Plotly Chart Player 1
+            # Plotly Chart Player 1 (Rows = m_real)
             df_x = pd.DataFrame({
-                "Strategy": [f"X{i+1}" for i in range(len(x_opt))],
+                "Strategy": [f"X{i+1}" for i in range(m_real)],
                 "Probability": x_opt
             })
             fig_x = px.bar(
                 df_x, x="Strategy", y="Probability", text_auto=".4f",
-                title="Player 1 Strategy Distribution (x*)",
+                title=f"Player 1 Strategy Distribution ({m_real} Strategies)",
                 color="Probability", color_continuous_scale="Blues"
             )
             fig_x.update_layout(
@@ -293,14 +299,14 @@ if solve_btn:
             )
             chart_col1.plotly_chart(fig_x, use_container_width=True)
 
-            # Plotly Chart Player 2
+            # Plotly Chart Player 2 (Cols = n_real)
             df_y = pd.DataFrame({
-                "Strategy": [f"Y{j+1}" for j in range(len(y_opt))],
+                "Strategy": [f"Y{j+1}" for j in range(n_real)],
                 "Probability": y_opt
             })
             fig_y = px.bar(
                 df_y, x="Strategy", y="Probability", text_auto=".4f",
-                title="Player 2 Strategy Distribution (y*)",
+                title=f"Player 2 Strategy Distribution ({n_real} Strategies)",
                 color="Probability", color_continuous_scale="Tealgrn"
             )
             fig_y.update_layout(
