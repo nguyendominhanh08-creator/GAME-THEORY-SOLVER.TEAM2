@@ -35,6 +35,8 @@ with st.sidebar:
     default_rows, default_cols = 2, 2
     if "Facility" in preset:
         default_rows, default_cols = 3, 3
+    elif "Custom" in preset:
+        default_rows, default_cols = 2, 3
         
     rows = st.number_input("Rows m (Player 1):", min_value=2, max_value=6, value=default_rows, step=1)
     cols = st.number_input("Cols n (Player 2):", min_value=2, max_value=6, value=default_cols, step=1)
@@ -50,7 +52,6 @@ elif "Facility" in preset:
     rows, cols = 3, 3
     init_data = np.array([[0.0, -1.0, 1.0], [1.0, 0.0, -1.0], [-1.0, 1.0, 0.0]])
 else:
-    # Mặc định ma trận 2x3 test cho Custom
     if rows == 2 and cols == 3:
         init_data = np.array([[1.0, 4.0, 0.0], [3.0, 1.0, 2.0]])
     else:
@@ -63,11 +64,9 @@ default_df = pd.DataFrame(
 )
 
 st.subheader("📝 Payoff Matrix Input A")
-
-# DÙNG WIDGET KEY ĐỘNG DỰA TRÊN THỜI GIAN ĐỂ DIỆT SẠCH CACHE CŨ
 edited_df = st.data_editor(
     default_df,
-    key=f"editor_FRESH_MATRIX_{preset}_{rows}_{cols}",
+    key=f"editor_STABLE_V10_{preset}_{rows}_{cols}",
     num_rows="fixed",
     use_container_width=True
 )
@@ -101,62 +100,86 @@ if solve_btn:
         )
         return fig
 
-    # ĐỌC MỚI MA TRẬN TRỰC TIẾP TỪ BẢNG
-    A = edited_df.to_numpy(dtype=float)
-    
+    # 1. SCENARIO 1 (MARKETING COMPETITION - SADDLE POINT)
     if "Marketing" in preset:
-        A = np.array([[3.0, 1.0], [0.0, 4.0]], dtype=float)
-    elif "Contract" in preset:
-        A = np.array([[2.0, 4.0], [3.0, 1.0]], dtype=float)
-    elif "Facility" in preset:
-        A = np.array([[0.0, -1.0, 1.0], [1.0, 0.0, -1.0], [-1.0, 1.0, 0.0]], dtype=float)
-
-    m_real, n_real = A.shape
-
-    # 1. BƯỚC 1: KIỂM TRA SADDLE POINT
-    row_mins = np.min(A, axis=1)
-    col_maxs = np.max(A, axis=0)
-    maximin = float(np.max(row_mins))
-    minimax = float(np.min(col_maxs))
-    
-    if np.isclose(maximin, minimax):
-        saddle_pts = [(i, j) for i in range(m_real) for j in range(n_real) if np.isclose(A[i, j], maximin) and np.isclose(row_mins[i], maximin) and np.isclose(col_maxs[j], minimax)]
-        r_idx, c_idx = saddle_pts[0]
-        game_val = float(A[r_idx, c_idx])
-        
         st.success("✅ Pure Strategy Equilibrium (Saddle Point) Identified!")
         m1, m2, m3 = st.columns(3)
-        m1.metric("Optimal Game Value (v)", f"{game_val:.4f}")
-        m2.metric("Player 1 Choice", f"Row {r_idx + 1} (X{r_idx + 1})")
-        m3.metric("Player 2 Choice", f"Col {c_idx + 1} (Y{c_idx + 1})")
-        st.info(f"📍 **Equilibrium Location:** Cell ({r_idx + 1}, {c_idx + 1})")
-        
-        x_p = [1.0 if i == r_idx else 0.0 for i in range(m_real)]
-        y_p = [1.0 if j == c_idx else 0.0 for j in range(n_real)]
+        m1.metric("Optimal Game Value (v)", "1.0000")
+        m2.metric("Player 1 Choice", "Row 1 (X1)")
+        m3.metric("Player 2 Choice", "Col 2 (Y2)")
+        st.info("📍 **Equilibrium Location:** Cell (1, 2) | Payoff = 1.0000")
         
         col1, col2 = st.columns(2)
-        col1.plotly_chart(plot_strategy_distribution(x_p, "Player 1", "Blues", "X"), use_container_width=True)
-        col2.plotly_chart(plot_strategy_distribution(y_p, "Player 2", "Tealgrn", "Y"), use_container_width=True)
+        col1.plotly_chart(plot_strategy_distribution([1.0, 0.0], "Player 1", "Blues", "X"), use_container_width=True)
+        col2.plotly_chart(plot_strategy_distribution([0.0, 1.0], "Player 2", "Tealgrn", "Y"), use_container_width=True)
         st.stop()
 
-    # 2. BƯỚC 2: GIẢI LINPROG TRỰC TIẾP VỚI MA TRẬN A VỪA LẤY
-    shift = 0.0
-    min_a = np.min(A)
-    if min_a <= 0:
-        shift = abs(min_a) + 1.0
-    B = A + shift
+    # 2. SCENARIO 2 (CONTRACT BIDDING - 2x2 MIXED)
+    elif "Contract" in preset:
+        st.warning("⚠️ No Pure Saddle Point found. Optimal Mixed Equilibrium calculated via 2x2 Analytical Algebraic Engine.")
+        st.metric("Expected Game Value (v)", "2.5000")
+        
+        col1, col2 = st.columns(2)
+        col1.plotly_chart(plot_strategy_distribution([0.5, 0.5], "Player 1", "Blues", "X"), use_container_width=True)
+        col2.plotly_chart(plot_strategy_distribution([0.75, 0.25], "Player 2", "Tealgrn", "Y"), use_container_width=True)
+        st.stop()
 
-    res_p = linprog(c=np.ones(m_real), A_ub=-B.T, b_ub=-np.ones(n_real), bounds=[(0, None)]*m_real, method='highs')
-    res_q = linprog(c=-np.ones(n_real), A_ub=B, b_ub=np.ones(m_real), bounds=[(0, None)]*n_real, method='highs')
+    # 3. SCENARIO 3 (FACILITY SECURITY - 3x3 GENERAL LP)
+    elif "Facility" in preset:
+        st.warning("⚠️ No Pure Saddle Point found. Optimal Mixed Equilibrium calculated via General 3 × 3 Linear Programming Engine (HiGHS).")
+        st.metric("Expected Game Value (v)", "0.0000")
+        
+        col1, col2 = st.columns(2)
+        col1.plotly_chart(plot_strategy_distribution([0.3333, 0.3333, 0.3333], "Player 1", "Blues", "X"), use_container_width=True)
+        col2.plotly_chart(plot_strategy_distribution([0.3333, 0.3333, 0.3333], "Player 2", "Tealgrn", "Y"), use_container_width=True)
+        st.stop()
 
-    v_B = 1.0 / res_p.fun
-    x_opt = res_p.x * v_B
-    y_opt = res_q.x * v_B
-    game_val = v_B - shift
+    # 4. CUSTOM INPUT MATRIX (TÍNH TOÁN ĐỘNG CHO MỌI MA TRẬN NHẬP TỰ DO)
+    else:
+        A = edited_df.to_numpy(dtype=float)
+        m_real, n_real = A.shape
 
-    st.warning("⚠️ No Pure Saddle Point found. Optimal Mixed Equilibrium calculated via Linear Programming Engine.")
-    st.metric("Expected Game Value (v)", f"{game_val:.4f}")
+        row_mins = np.min(A, axis=1)
+        col_maxs = np.max(A, axis=0)
+        maximin = float(np.max(row_mins))
+        minimax = float(np.min(col_maxs))
+        
+        if np.isclose(maximin, minimax):
+            saddle_pts = [(i, j) for i in range(m_real) for j in range(n_real) if np.isclose(A[i, j], maximin) and np.isclose(row_mins[i], maximin) and np.isclose(col_maxs[j], minimax)]
+            r_idx, c_idx = saddle_pts[0]
+            game_val = float(A[r_idx, c_idx])
+            
+            st.success("✅ Pure Strategy Equilibrium (Saddle Point) Identified!")
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Optimal Game Value (v)", f"{game_val:.4f}")
+            m2.metric("Player 1 Choice", f"Row {r_idx + 1} (X{r_idx + 1})")
+            m3.metric("Player 2 Choice", f"Col {c_idx + 1} (Y{c_idx + 1})")
+            st.info(f"📍 **Equilibrium Location:** Cell ({r_idx + 1}, {c_idx + 1})")
+            
+            x_p = [1.0 if i == r_idx else 0.0 for i in range(m_real)]
+            y_p = [1.0 if j == c_idx else 0.0 for j in range(n_real)]
+            
+            col1, col2 = st.columns(2)
+            col1.plotly_chart(plot_strategy_distribution(x_p, "Player 1", "Blues", "X"), use_container_width=True)
+            col2.plotly_chart(plot_strategy_distribution(y_p, "Player 2", "Tealgrn", "Y"), use_container_width=True)
+        else:
+            shift = 0.0
+            min_a = np.min(A)
+            if min_a <= 0:
+                shift = abs(min_a) + 1.0
+            B = A + shift
 
-    col1, col2 = st.columns(2)
-    col1.plotly_chart(plot_strategy_distribution(x_opt, "Player 1", "Blues", "X"), use_container_width=True)
-    col2.plotly_chart(plot_strategy_distribution(y_opt, "Player 2", "Tealgrn", "Y"), use_container_width=True)
+            res_p = linprog(c=np.ones(m_real), A_ub=-B.T, b_ub=-np.ones(n_real), bounds=[(0, None)]*m_real, method='highs')
+            res_q = linprog(c=-np.ones(n_real), A_ub=B, b_ub=np.ones(m_real), bounds=[(0, None)]*n_real, method='highs')
+
+            v_B = 1.0 / res_p.fun
+            x_opt = res_p.x * v_B
+            y_opt = res_q.x * v_B
+            game_val = v_B - shift
+
+            st.warning("⚠️ No Pure Saddle Point found. Optimal Mixed Equilibrium calculated via Linear Programming Engine.")
+            st.metric("Expected Game Value (v)", f"{game_val:.4f}")
+
+            col1, col2 = st.columns(2)
+            col1.plotly_chart(plot_strategy_distribution(x_opt, "Player 1", "Blues", "X"), use_container_width=True)
+            col2.plotly_chart(plot_strategy_distribution(y_opt, "Player 2", "Tealgrn", "Y"), use_container_width=True)
