@@ -126,7 +126,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🎓 Academic Information")
     st.caption("**Course:** Linear Algebra")
-    st.caption("**Version:** 5.0 Universal m × n Engine")
+    st.caption("**Version:** 5.1 Categorical Axis Fix")
 
 # ---------------------------------------------------------
 # 4. Input Matrix Handling
@@ -183,7 +183,7 @@ if solve_btn:
     st.balloons()
     
     A = edited_df.to_numpy(dtype=float)
-    m_real, n_real = A.shape # Kích thước chuẩn thực tế
+    m_real, n_real = A.shape
     
     st.markdown("---")
     st.header("🎯 Equilibrium Results & Decision Analytics")
@@ -238,7 +238,6 @@ if solve_btn:
         # 2. Mixed Strategy Solutions
         x_opt, y_opt, game_val, solver_name = None, None, None, ""
         
-        # Chỉ gọi 2x2 Analytical Solver khi ma trận ĐÚNG LÀ 2x2 thực sự
         if m_real == 2 and n_real == 2:
             try:
                 res_2x2 = solve_game_2x2(A)
@@ -252,7 +251,6 @@ if solve_btn:
             except Exception:
                 pass
                 
-        # Với tất cả ma trận khác (2x3, 3x2, 3x3, 4x4, 6x6...), dùng LP Solver
         if x_opt is None:
             try:
                 sol = solve_matrix_game(A)
@@ -269,7 +267,6 @@ if solve_btn:
                 st.error(f"❌ LP Solver Error: {e}")
                 st.stop()
 
-        # Đảm bảo ép chuẩn xác độ dài m_real (Player 1) và n_real (Player 2)
         x_opt = np.asarray(x_opt, dtype=float).flatten()[:m_real]
         y_opt = np.asarray(y_opt, dtype=float).flatten()[:n_real]
         game_val = float(np.squeeze(game_val))
@@ -281,38 +278,44 @@ if solve_btn:
             st.markdown("### 📈 Interactive Strategy Probability Distributions")
             chart_col1, chart_col2 = st.columns(2)
             
-            # Plotly Chart Player 1 (Rows = m_real)
+            # Plotly Chart Player 1 (Bắt buộc trục X dạng Category)
             df_x = pd.DataFrame({
                 "Strategy": [f"X{i+1}" for i in range(m_real)],
-                "Probability": x_opt
+                "Probability": x_opt,
+                "TextLabel": [f"{val:.4f}" for val in x_opt]
             })
             fig_x = px.bar(
-                df_x, x="Strategy", y="Probability", text_auto=".4f",
+                df_x, x="Strategy", y="Probability", text="TextLabel",
                 title=f"Player 1 Strategy Distribution ({m_real} Strategies)",
                 color="Probability", color_continuous_scale="Blues"
             )
+            fig_x.update_xaxes(type='category') # Bắt buộc hiện đủ nhãn X1, X2...
+            fig_x.update_traces(textposition='outside') # Hiện chữ số rõ ràng trên đầu cột
             fig_x.update_layout(
                 font_family="Times New Roman",
                 title_font_size=18,
-                yaxis_range=[0, 1.05],
+                yaxis_range=[0, 1.15],
                 showlegend=False
             )
             chart_col1.plotly_chart(fig_x, use_container_width=True)
 
-            # Plotly Chart Player 2 (Cols = n_real)
+            # Plotly Chart Player 2 (Bắt buộc trục X dạng Category)
             df_y = pd.DataFrame({
                 "Strategy": [f"Y{j+1}" for j in range(n_real)],
-                "Probability": y_opt
+                "Probability": y_opt,
+                "TextLabel": [f"{val:.4f}" for val in y_opt]
             })
             fig_y = px.bar(
-                df_y, x="Strategy", y="Probability", text_auto=".4f",
+                df_y, x="Strategy", y="Probability", text="TextLabel",
                 title=f"Player 2 Strategy Distribution ({n_real} Strategies)",
                 color="Probability", color_continuous_scale="Tealgrn"
             )
+            fig_y.update_xaxes(type='category') # Bắt buộc hiện đủ nhãn Y1, Y2...
+            fig_y.update_traces(textposition='outside') # Hiện chữ số rõ ràng trên đầu cột
             fig_y.update_layout(
                 font_family="Times New Roman",
                 title_font_size=18,
-                yaxis_range=[0, 1.05],
+                yaxis_range=[0, 1.15],
                 showlegend=False
             )
             chart_col2.plotly_chart(fig_y, use_container_width=True)
