@@ -84,6 +84,7 @@ if solve_btn:
     st.markdown("---")
     st.header("🎯 Equilibrium Results")
 )
+^
 
   def plot_strategy_distribution(
     probs, player_name, color_scale, labels
