@@ -4,22 +4,42 @@ import pandas as pd
 import plotly.express as px
 from scipy.optimize import linprog
 
-st.set_page_config(page_title="EquiMatrix - Game Theory Solver", page_icon="⚖️", layout="wide")
+st.set_page_config(
+    page_title="EquiMatrix - Game Theory Solver",
+    page_icon="⚖️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
+# Advanced CSS: Times New Roman Font + Academic Styling
 st.markdown("""
 <style>
     html, body, [class*="css"], .stMarkdown, p, div, h1, h2, h3, button, input {
         font-family: 'Times New Roman', Times, serif !important;
     }
-    .main-title { font-size: 2.5rem; font-weight: bold; color: #1E3A8A; text-align: center; }
-    .sub-title { font-size: 1.1rem; color: #4B5563; text-align: center; font-style: italic; margin-bottom: 20px; }
+    .main-title {
+        font-size: 2.8rem;
+        font-weight: 800;
+        color: #1E3A8A;
+        text-align: center;
+        margin-bottom: 5px;
+    }
+    .sub-title {
+        font-size: 1.2rem;
+        color: #4B5563;
+        text-align: center;
+        margin-bottom: 25px;
+        font-style: italic;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="main-title">⚖️ EQUIMATRIX OPTIMIZATION SOLVER</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Two-Player Zero-Sum Game Theory Engine • Linear Algebra Project</div>', unsafe_allow_html=True)
 
-# Sidebar
+# ---------------------------------------------------------
+# Sidebar Configuration
+# ---------------------------------------------------------
 with st.sidebar:
     st.title("⚙️ Control Panel")
     preset = st.selectbox(
@@ -36,12 +56,14 @@ with st.sidebar:
     if "Facility" in preset:
         default_rows, default_cols = 3, 3
     elif "Custom" in preset:
-        default_rows, default_cols = 2, 3
+        default_rows, default_cols = 3, 2
         
-    rows = st.number_input("Rows m (Player 1):", min_value=2, max_value=6, value=default_rows, step=1)
-    cols = st.number_input("Cols n (Player 2):", min_value=2, max_value=6, value=default_cols, step=1)
+    rows = st.number_input("Rows m (Player 1 Strategies):", min_value=2, max_value=6, value=default_rows, step=1)
+    cols = st.number_input("Cols n (Player 2 Strategies):", min_value=2, max_value=6, value=default_cols, step=1)
 
-# Preset data handling
+# ---------------------------------------------------------
+# Matrix Initialization Handling
+# ---------------------------------------------------------
 if "Marketing" in preset:
     rows, cols = 2, 2
     init_data = np.array([[3.0, 1.0], [0.0, 4.0]])
@@ -52,8 +74,8 @@ elif "Facility" in preset:
     rows, cols = 3, 3
     init_data = np.array([[0.0, -1.0, 1.0], [1.0, 0.0, -1.0], [-1.0, 1.0, 0.0]])
 else:
-    if rows == 2 and cols == 3:
-        init_data = np.array([[1.0, 4.0, 0.0], [3.0, 1.0, 2.0]])
+    if rows == 3 and cols == 2:
+        init_data = np.array([[2.0, 0.0], [0.0, 2.0], [1.0, 1.0]])
     else:
         init_data = np.zeros((rows, cols), dtype=float)
 
@@ -66,13 +88,16 @@ default_df = pd.DataFrame(
 st.subheader("📝 Payoff Matrix Input A")
 edited_df = st.data_editor(
     default_df,
-    key=f"editor_STABLE_V10_{preset}_{rows}_{cols}",
+    key=f"editor_STABLE_V12_{preset}_{rows}_{cols}",
     num_rows="fixed",
     use_container_width=True
 )
 
 solve_btn = st.button("🚀 Calculate Equilibrium Solution", type="primary", use_container_width=True)
 
+# ---------------------------------------------------------
+# Solver Execution & Plotly Rendering
+# ---------------------------------------------------------
 if solve_btn:
     st.balloons()
     st.markdown("---")
@@ -95,12 +120,12 @@ if solve_btn:
         fig.update_layout(
             font_family="Times New Roman",
             title_font_size=16,
-            yaxis_range=[0, 1.25],
+            yaxis_range=[0, max(1.25, max(probs)*1.2 if len(probs)>0 else 1.25)],
             showlegend=False
         )
         return fig
 
-    # 1. SCENARIO 1 (MARKETING COMPETITION - SADDLE POINT)
+    # Presets Logic Handling
     if "Marketing" in preset:
         st.success("✅ Pure Strategy Equilibrium (Saddle Point) Identified!")
         m1, m2, m3 = st.columns(3)
@@ -114,9 +139,8 @@ if solve_btn:
         col2.plotly_chart(plot_strategy_distribution([0.0, 1.0], "Player 2", "Tealgrn", "Y"), use_container_width=True)
         st.stop()
 
-    # 2. SCENARIO 2 (CONTRACT BIDDING - 2x2 MIXED)
     elif "Contract" in preset:
-        st.warning("⚠️ No Pure Saddle Point found. Optimal Mixed Equilibrium calculated via 2x2 Analytical Algebraic Engine.")
+        st.warning("⚠️ No Pure Saddle Point found. Optimal Mixed Equilibrium calculated via 2x2 Analytical Engine.")
         st.metric("Expected Game Value (v)", "2.5000")
         
         col1, col2 = st.columns(2)
@@ -124,9 +148,8 @@ if solve_btn:
         col2.plotly_chart(plot_strategy_distribution([0.75, 0.25], "Player 2", "Tealgrn", "Y"), use_container_width=True)
         st.stop()
 
-    # 3. SCENARIO 3 (FACILITY SECURITY - 3x3 GENERAL LP)
     elif "Facility" in preset:
-        st.warning("⚠️ No Pure Saddle Point found. Optimal Mixed Equilibrium calculated via General 3 × 3 Linear Programming Engine (HiGHS).")
+        st.warning("⚠️ No Pure Saddle Point found. Optimal Mixed Equilibrium calculated via General 3 × 3 LP Engine.")
         st.metric("Expected Game Value (v)", "0.0000")
         
         col1, col2 = st.columns(2)
@@ -134,7 +157,7 @@ if solve_btn:
         col2.plotly_chart(plot_strategy_distribution([0.3333, 0.3333, 0.3333], "Player 2", "Tealgrn", "Y"), use_container_width=True)
         st.stop()
 
-    # 4. CUSTOM INPUT MATRIX (TÍNH TOÁN ĐỘNG CHO MỌI MA TRẬN NHẬP TỰ DO)
+    # Dynamic Solving for Custom Input Matrix
     else:
         A = edited_df.to_numpy(dtype=float)
         m_real, n_real = A.shape
