@@ -9,7 +9,7 @@ from modules.solve_2x2 import solve_game_2x2
 from modules.lp_solver import solve_matrix_game
 
 # ---------------------------------------------------------
-# 1. Page Configuration & Custom Academic CSS with Animations
+# 1. Page Configuration & Custom Academic CSS
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="EquiMatrix - Game Theory Solver",
@@ -18,15 +18,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for Times New Roman font and smooth animations
+# Custom Styling (Times New Roman Font + Animations)
 st.markdown("""
 <style>
-    /* Global Font Settings */
     html, body, [class*="css"], .stMarkdown, p, div, h1, h2, h3, button, input {
         font-family: 'Times New Roman', Times, serif !important;
     }
     
-    /* Header Animation & Styling */
     .main-title {
         font-size: 2.8rem;
         font-weight: 800;
@@ -45,7 +43,6 @@ st.markdown("""
         animation: fadeInUp 1.2s ease-in-out;
     }
 
-    /* Custom Cards with Smooth Hover Animation */
     .metric-card {
         background: linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%);
         border-left: 5px solid #1E3A8A;
@@ -71,7 +68,6 @@ st.markdown("""
         font-weight: 800;
     }
 
-    /* Button Hover Effect */
     div.stButton > button {
         font-family: 'Times New Roman', Times, serif !important;
         font-size: 1.2rem !important;
@@ -84,7 +80,6 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(37, 99, 235, 0.5);
     }
 
-    /* Keyframe Animations */
     @keyframes fadeInDown {
         0% { opacity: 0; transform: translateY(-20px); }
         100% { opacity: 1; transform: translateY(0); }
@@ -127,7 +122,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🎓 Academic Information")
     st.caption("**Course:** Linear Algebra")
-    st.caption("**Version:** 3.2 Bulletproof Edition")
+    st.caption("**Version:** 3.3 Final Stable Edition")
 
 # ---------------------------------------------------------
 # 4. Input Matrix Handling
@@ -189,21 +184,33 @@ if solve_btn:
     
     tab1, tab2, tab3 = st.tabs(["📊 Interactive Dashboard", "💡 Strategic Decision Analysis", "📐 Mathematical Formulation"])
     
-    # Check Saddle Point Safely
+    # SAFE SADDLE POINT CHECK LOGIC
+    has_sp = False
     saddle_pts = []
+    
     try:
-        sp_result = find_saddle_points(A)
-        if isinstance(sp_result, dict) and sp_result.get("has_saddle_point"):
-            saddle_pts = sp_result.get("saddle_points", [])
-        elif isinstance(sp_result, list):
-            saddle_pts = sp_result
+        sp_res = find_saddle_points(A)
+        if isinstance(sp_res, dict):
+            has_sp = sp_res.get("has_saddle_point", False)
+            saddle_pts = sp_res.get("saddle_points", [])
+        elif isinstance(sp_res, list):
+            has_sp = len(sp_res) > 0
+            saddle_pts = sp_res
     except Exception:
+        has_sp = False
         saddle_pts = []
 
-    # Strict length check before indexing
-    if len(saddle_pts) > 0:
-        r_idx, c_idx = saddle_pts[0]
-        game_val = A[r_idx, c_idx]
+    if has_sp and len(saddle_pts) > 0:
+        sp_item = saddle_pts[0]
+        # Xử lý an toàn nếu sp_item là dict hoặc tuple
+        if isinstance(sp_item, (tuple, list)):
+            r_idx, c_idx = int(sp_item[0]), int(sp_item[1])
+        elif isinstance(sp_item, dict):
+            r_idx, c_idx = int(sp_item.get("row", 0)), int(sp_item.get("col", 0))
+        else:
+            r_idx, c_idx = 0, 0
+            
+        game_val = float(A[r_idx, c_idx])
         
         with tab1:
             st.success("✅ Pure Strategy Equilibrium (Saddle Point) Identified!")
@@ -229,19 +236,30 @@ if solve_btn:
         
         if rows == 2 and cols == 2:
             try:
-                x_opt, y_opt, game_val = solve_game_2x2(A)
+                res_2x2 = solve_game_2x2(A)
+                if isinstance(res_2x2, tuple):
+                    x_opt, y_opt, game_val = res_2x2
+                elif isinstance(res_2x2, dict):
+                    x_opt = res_2x2.get("x")
+                    y_opt = res_2x2.get("y")
+                    game_val = res_2x2.get("value")
                 solver_name = "2x2 Analytical Algebraic Module"
             except Exception:
                 pass
                 
         if x_opt is None:
             sol = solve_matrix_game(A)
-            x_opt, y_opt, game_val = sol.x, sol.y, sol.value
+            if hasattr(sol, 'x'):
+                x_opt, y_opt, game_val = sol.x, sol.y, sol.value
+            elif isinstance(sol, dict):
+                x_opt = sol.get("x")
+                y_opt = sol.get("y")
+                game_val = sol.get("value")
             solver_name = "General m × n Linear Programming Engine (HiGHS)"
 
         with tab1:
             st.warning(f"⚠️ No Pure Saddle Point found. Optimal Mixed Equilibrium calculated via **{solver_name}**.")
-            st.metric("Expected Game Value (v)", f"{game_val:.4f}")
+            st.metric("Expected Game Value (v)", f"{float(game_val):.4f}")
             
             st.markdown("### 📈 Interactive Strategy Probability Distributions")
             chart_col1, chart_col2 = st.columns(2)
@@ -286,7 +304,7 @@ if solve_btn:
             st.markdown("### 💡 Strategic Takeaways")
             st.write(f"- **Player 1 Strategy Vector ($x^*$):** `{np.round(x_opt, 4)}`")
             st.write(f"- **Player 2 Strategy Vector ($y^*$):** `{np.round(y_opt, 4)}`")
-            st.write(f"- Expected game payoff under optimal mixed strategy equilibrium is **{game_val:.4f}**.")
+            st.write(f"- Expected game payoff under optimal mixed strategy equilibrium is **{float(game_val):.4f}**.")
 
         with tab3:
             st.markdown("### 📐 Linear Programming Model Formulation")
