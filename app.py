@@ -2,7 +2,6 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.express as px
-import time
 
 # Import core modules
 from modules.saddle_point import find_saddle_points
@@ -19,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Advanced CSS: Times New Roman Font + Smooth Hover & Pulse Animations
+# Custom CSS for Times New Roman font and smooth animations
 st.markdown("""
 <style>
     /* Global Font Settings */
@@ -72,7 +71,7 @@ st.markdown("""
         font-weight: 800;
     }
 
-    /* Primary Button Pulse Animation */
+    /* Button Hover Effect */
     div.stButton > button {
         font-family: 'Times New Roman', Times, serif !important;
         font-size: 1.2rem !important;
@@ -128,7 +127,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🎓 Academic Information")
     st.caption("**Course:** Linear Algebra")
-    st.caption("**Version:** 3.0 Interactive Animated Edition")
+    st.caption("**Version:** 3.1 Fixed Edition")
 
 # ---------------------------------------------------------
 # 4. Input Matrix Handling
@@ -182,7 +181,6 @@ solve_btn = st.button("🚀 Calculate Equilibrium Solution", type="primary", use
 # 5. Solver & Animated Interactive Results Dashboard
 # ---------------------------------------------------------
 if solve_btn:
-    # Trigger celebration effect
     st.balloons()
     
     A = edited_df.to_numpy(dtype=float)
@@ -191,19 +189,18 @@ if solve_btn:
     
     tab1, tab2, tab3 = st.tabs(["📊 Interactive Dashboard", "💡 Strategic Decision Analysis", "📐 Mathematical Formulation"])
     
-    # Check Saddle Point
-    has_sp = False
+    # Check Saddle Point Safely
     saddle_pts = []
     try:
         sp_result = find_saddle_points(A)
         if isinstance(sp_result, dict) and sp_result.get("has_saddle_point"):
-            has_sp = True
-            saddle_pts = sp_result.get("saddle_points")
-        elif isinstance(sp_result, list) and len(sp_result) > 0:
-            has_sp = True
+            saddle_pts = sp_result.get("saddle_points", [])
+        elif isinstance(sp_result, list):
             saddle_pts = sp_result
     except Exception:
-        pass
+        saddle_pts = []
+
+    has_sp = len(saddle_pts) > 0
 
     if has_sp:
         r_idx, c_idx = saddle_pts[0]
@@ -250,7 +247,7 @@ if solve_btn:
             st.markdown("### 📈 Interactive Strategy Probability Distributions")
             chart_col1, chart_col2 = st.columns(2)
             
-            # Animated Plotly Chart for Player 1
+            # Plotly Chart Player 1
             df_x = pd.DataFrame({
                 "Strategy": [f"X{i+1}" for i in range(rows)],
                 "Probability": x_opt
@@ -268,7 +265,7 @@ if solve_btn:
             )
             chart_col1.plotly_chart(fig_x, use_container_width=True)
 
-            # Animated Plotly Chart for Player 2
+            # Plotly Chart Player 2
             df_y = pd.DataFrame({
                 "Strategy": [f"Y{j+1}" for j in range(cols)],
                 "Probability": y_opt
@@ -296,8 +293,3 @@ if solve_btn:
             st.markdown("### 📐 Linear Programming Model Formulation")
             st.latex(r"\max v \quad \text{subject to} \quad A^T x \ge v \mathbf{1}, \quad \sum x_i = 1, \quad x_i \ge 0")
             st.latex(r"\min v \quad \text{subject to} \quad A y \le v \mathbf{1}, \quad \sum y_j = 1, \quad y_j \ge 0")
-
-        with tab3:
-            st.markdown("### 📐 Linear Programming Optimization Formulation")
-            st.latex(r"\max v \quad \text{s.t.} \quad A^T x \ge v \mathbf{1}, \quad \sum x_i = 1, \quad x_i \ge 0")
-            st.latex(r"\min v \quad \text{s.t.} \quad A y \le v \mathbf{1}, \quad \sum y_j = 1, \quad y_j \ge 0")
