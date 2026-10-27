@@ -50,7 +50,11 @@ elif "Facility" in preset:
     rows, cols = 3, 3
     init_data = np.array([[0.0, -1.0, 1.0], [1.0, 0.0, -1.0], [-1.0, 1.0, 0.0]])
 else:
-    init_data = np.zeros((rows, cols), dtype=float)
+    # Mặc định ma trận 2x3 test cho Custom
+    if rows == 2 and cols == 3:
+        init_data = np.array([[1.0, 4.0, 0.0], [3.0, 1.0, 2.0]])
+    else:
+        init_data = np.zeros((rows, cols), dtype=float)
 
 default_df = pd.DataFrame(
     init_data,
@@ -59,9 +63,11 @@ default_df = pd.DataFrame(
 )
 
 st.subheader("📝 Payoff Matrix Input A")
+
+# DÙNG WIDGET KEY ĐỘNG DỰA TRÊN THỜI GIAN ĐỂ DIỆT SẠCH CACHE CŨ
 edited_df = st.data_editor(
     default_df,
-    key=f"editor_DYNAMIC_SOLVER_{preset.replace(' ', '_')}_{rows}_{cols}",
+    key=f"editor_FRESH_MATRIX_{preset}_{rows}_{cols}",
     num_rows="fixed",
     use_container_width=True
 )
@@ -95,7 +101,7 @@ if solve_btn:
         )
         return fig
 
-    # LẤY TRỰC TIẾP MA TRẬN ĐẦU VÀO TỪ BẢNG VỚI MỌI TÍNH TOÁN ĐỘNG
+    # ĐỌC MỚI MA TRẬN TRỰC TIẾP TỪ BẢNG
     A = edited_df.to_numpy(dtype=float)
     
     if "Marketing" in preset:
@@ -107,7 +113,7 @@ if solve_btn:
 
     m_real, n_real = A.shape
 
-    # BƯỚC 1: KIỂM TRA ĐIỂM YÊN NGỰA THUẦN TÚY
+    # 1. BƯỚC 1: KIỂM TRA SADDLE POINT
     row_mins = np.min(A, axis=1)
     col_maxs = np.max(A, axis=0)
     maximin = float(np.max(row_mins))
@@ -133,7 +139,7 @@ if solve_btn:
         col2.plotly_chart(plot_strategy_distribution(y_p, "Player 2", "Tealgrn", "Y"), use_container_width=True)
         st.stop()
 
-    # BƯỚC 2: GIẢI DỰA TRÊN QUY HOẠCH TUYẾN TÍNH DÙNG SCIPY ĐỘNG 100%
+    # 2. BƯỚC 2: GIẢI LINPROG TRỰC TIẾP VỚI MA TRẬN A VỪA LẤY
     shift = 0.0
     min_a = np.min(A)
     if min_a <= 0:
