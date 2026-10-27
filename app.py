@@ -126,7 +126,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🎓 Academic Information")
     st.caption("**Course:** Linear Algebra")
-    st.caption("**Version:** 6.0 Robust Preset & Saddle Execution")
+    st.caption("**Version:** 7.0 Anti-Cache Session Edition")
 
 # ---------------------------------------------------------
 # 4. Input Matrix Handling
@@ -154,9 +154,13 @@ col_left, col_right = st.columns([2.2, 1])
 with col_left:
     st.subheader("📝 Payoff Matrix Input $A$")
     st.caption("Double-click cells below to edit numerical values:")
+    
+    # Tạo key động cực kỳ thông minh để diệt sạch Session State cũ khi đổi Preset
+    editor_key = f"editor_v7_{preset.replace(' ', '_')}_{rows}_{cols}"
+    
     edited_df = st.data_editor(
         default_df,
-        key=f"editor_v6_{preset}_{rows}_{cols}",
+        key=editor_key,
         num_rows="fixed",
         use_container_width=True
     )
@@ -182,13 +186,13 @@ solve_btn = st.button("🚀 Calculate Equilibrium Solution", type="primary", use
 if solve_btn:
     st.balloons()
     
-    # Ưu tiên lấy ma trận gốc từ Preset nếu người dùng đang chọn Scenario
+    # Bắt buộc ép ma trận theo đúng Preset nếu người dùng không chọn Custom Input
     if "Marketing" in preset:
-        A = np.array([[3.0, 1.0], [0.0, 4.0]])
+        A = np.array([[3.0, 1.0], [0.0, 4.0]], dtype=float)
     elif "Contract" in preset:
-        A = np.array([[2.0, 4.0], [3.0, 1.0]])
+        A = np.array([[2.0, 4.0], [3.0, 1.0]], dtype=float)
     elif "Facility" in preset:
-        A = np.array([[0.0, -1.0, 1.0], [1.0, 0.0, -1.0], [-1.0, 1.0, 0.0]])
+        A = np.array([[0.0, -1.0, 1.0], [1.0, 0.0, -1.0], [-1.0, 1.0, 0.0]], dtype=float)
     else:
         A = edited_df.to_numpy(dtype=float)
         
@@ -231,10 +235,10 @@ if solve_btn:
             st.latex(r"\max_i \min_j a_{ij} = \min_j \max_i a_{ij} = v")
             st.write(f"The Maximin value equals Minimax value at **{game_val:.4f}**.")
 
-        # Dừng luồng xử lý tại đây để không chạy xuống phần Mixed Strategy
+        # Ngắt luồng xử lý lập tức
         st.stop()
 
-    # 2. Xử lý Chiến lược hỗn hợp (Mixed Strategy) khi KHÔNG có điểm yên ngựa
+    # 2. Xử lý Chiến lược hỗn hợp (Mixed Strategy)
     x_opt, y_opt, game_val, solver_name = None, None, None, ""
     
     if m_real == 2 and n_real == 2:
